@@ -1,0 +1,22 @@
+node_modules/
+.next/
+.env
+.env.local
+.env.production
+.env.development
+dist/
+build/
+*.log
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+coverage/
+.turbo/
+.vercel/
+prisma/migrations/
+
+# Uploaded files (local storage)
+public/uploads/
+
