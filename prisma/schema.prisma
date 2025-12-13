@@ -1,0 +1,185 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PATIENT
+  DOCTOR
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum AuditAction {
+  LOGIN
+  LOGOUT
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  ACCESS_DENIED
+}
+
+model User {
+  id           String      @id @default(uuid())
+  email        String      @unique
+  passwordHash String      @map("password_hash")
+  role         Role
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+  
+  patient      Patient?
+  doctor       Doctor?
+  auditLogs    AuditLog[]
+
+  @@map("users")
+}
+
+model Patient {
+  id          String    @id @default(uuid())
+  userId      String    @unique @map("user_id")
+  firstName   String    @map("first_name")
+  lastName    String    @map("last_name")
+  dateOfBirth DateTime  @map("date_of_birth")
+  phone       String
+  address     String
+  bloodGroup  String?   @map("blood_group")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appointments    Appointment[]
+  medicalRecords  MedicalRecord[]
+  prescriptions   Prescription[]
+  testResults     TestResult[]
+
+  @@map("patients")
+}
+
+model Doctor {
+  id              String   @id @default(uuid())
+  userId          String   @unique @map("user_id")
+  firstName       String   @map("first_name")
+  lastName        String   @map("last_name")
+  specialization  String
+  licenseNumber   String   @unique @map("license_number")
+  phone           String
+  department      String
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appointments    Appointment[]
+  medicalRecords  MedicalRecord[]
+  prescriptions   Prescription[]
+  testResults     TestResult[]
+
+  @@map("doctors")
+}
+
+model Appointment {
+  id                String            @id @default(uuid())
+  patientId         String            @map("patient_id")
+  doctorId          String            @map("doctor_id")
+  appointmentDate   DateTime          @map("appointment_date")
+  appointmentTime   String            @map("appointment_time")
+  status            AppointmentStatus @default(SCHEDULED)
+  reason            String
+  notes             String?
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+
+  patient         Patient          @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor          Doctor           @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  medicalRecords  MedicalRecord[]
+
+  @@map("appointments")
+}
+
+model MedicalRecord {
+  id              String   @id @default(uuid())
+  patientId       String   @map("patient_id")
+  doctorId        String   @map("doctor_id")
+  appointmentId   String?  @map("appointment_id")
+  diagnosis       String
+  symptoms        String
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  patient       Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor        Doctor         @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  appointment   Appointment?   @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  prescriptions Prescription[]
+  testResults   TestResult[]
+
+  @@map("medical_records")
+}
+
+model Prescription {
+  id              String   @id @default(uuid())
+  patientId       String   @map("patient_id")
+  doctorId        String   @map("doctor_id")
+  medicalRecordId String?  @map("medical_record_id")
+  medication      String
+  dosage          String
+  frequency       String
+  duration        String
+  instructions    String?
+  fileUrl         String?  @map("file_url")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  patient       Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor        Doctor         @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  medicalRecord MedicalRecord? @relation(fields: [medicalRecordId], references: [id], onDelete: SetNull)
+
+  @@map("prescriptions")
+}
+
+model TestResult {
+  id              String   @id @default(uuid())
+  patientId       String   @map("patient_id")
+  doctorId        String   @map("doctor_id")
+  medicalRecordId String?  @map("medical_record_id")
+  testName        String   @map("test_name")
+  testDate        DateTime @map("test_date")
+  resultValue     String   @map("result_value")
+  fileUrl         String?  @map("file_url")
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  patient       Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor        Doctor         @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  medicalRecord MedicalRecord? @relation(fields: [medicalRecordId], references: [id], onDelete: SetNull)
+
+  @@map("test_results")
+}
+
+model AuditLog {
+  id           String      @id @default(uuid())
+  userId       String      @map("user_id")
+  action       AuditAction
+  resourceType String      @map("resource_type")
+  resourceId   String?     @map("resource_id")
+  ipAddress    String      @map("ip_address")
+  userAgent    String      @map("user_agent")
+  details      Json?
+  timestamp    DateTime    @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("audit_logs")
+}
+
+
